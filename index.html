@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script
+src="https://maps.googleapis.com/maps/api/js?sensor=false">
+</script>
+<script src="http://code.jquery.com/jquery-1.10.2.js"></script> 
+<link rel="stylesheet" href="style.css"></link>    
+  
+<script>
+
+//we store the imported airports data in an array of objects
+airports = new Array();
+    
+//this adds a math function for converting numbers to radians     
+if (typeof(Number.prototype.toRad) === "undefined") {
+  Number.prototype.toRad = function() {
+    return this * Math.PI / 180;
+  }
+}
+
+    
+// When the user clicks on a point in the map, we need to figure out the airports within X miles. 
+// This function, given a point's latitude and longitude,returns the needed change in latitude 
+//    and the change in longitude to go X miles.
+    
+function latlong_distance (miles, lat, lng){
+     
+    var earth_radius = 3960.0  // in miles
+    var degrees_to_radians = Math.PI/180.0;
+    var radians_to_degrees = 180.0/Math.PI;
+    var change_in_latitude= (miles/earth_radius)*radians_to_degrees;
+
+    // "Given a distance north, return the change in latitude."
+    var r = earth_radius*Math.cos(lat*degrees_to_radians);
+    var change_in_longitude = (miles/r)*radians_to_degrees;    
+    // "Given a latitude and a distance west, return the change in longitude."
+    //# Find the radius of a circle around the earth at given latitude.
+   
+    var obj = {
+        latitude: change_in_latitude,
+        longitude: change_in_longitude,
+    };
+    return obj;
+}    
+
+    
+// this calculates the distance between two points (given the curvature of the Earth, it's non-trivial      
+function haversine(lat1, lon1, lat2, lon2) {    
+    
+    var R = 6371; // km
+    var dLat = (lat2-lat1).toRad();
+    var dLon = (lon2-lon1).toRad();
+var lat1 = lat1.toRad();
+var lat2 = lat2.toRad();
+
+var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+var d = R * c;    
+ return d;   
+}    
+    
+function initialize()
+{
+  var lat = 36.825775;
+  var lng = -98.5833;
+  var image = 'BlueDot.png';
+   
+    
+   
+
+    
+// Center of United States   39.833,  -98.5833;
+// Center of California: 36.825775,-119.355469    
+    
+ // Data sample:   
+// "Airport_ID":8681,
+//    "Name":"St. Paul Downtown Airport - Holman Field",
+//    "City":"St. Paul",
+//    "Country":"United States",
+//    "IATA":"",
+//    "ICAO":"KSTP",
+//    "Latitude":44.9346225,
+//    "Longitude":-93.0603424,
+//    "Altitude":"705",
+//    "Timezone":-6,
+//    "DST":"A"    
+    
+    
+ var mapProp = {
+  center:new google.maps.LatLng(lat,lng),
+  zoom:3,
+    panControl: false,
+    zoomControl: true,
+    scaleControl: true  ,   
+    streetViewControl: false,  
+     
+  mapTypeId:google.maps.MapTypeId.ROADMAP
+  };
+var map=new google.maps.Map(document.getElementById("googleMap")
+  ,mapProp);
+
+
+//console.log(JSONObject[0].Longitude);    
+function airport_loc(name, latitude, longitude)
+{
+ this.name = name;
+ this.latitude = latitude;
+ this.longitude = longitude;
+
+}
+
+
+
+
+    
+    
+    
+ $.getJSON("airports.json",function(result){
+    $.each(result, function(i, field){
+      //  console.log(result[i].Longitude);
+       if (result[i].Country === "United States")   {
+        
+        //  airports.push([result[i].Name,  result[i].Latitude, result[i].Longitude]);
+         airports.push(new airport_loc(result[i].Name,  result[i].Latitude, result[i].Longitude));
+            
+         var marker=new google.maps.Marker({
+          position:new google.maps.LatLng(result[i].Latitude,result[i].Longitude),
+          icon: image,            
+       });
+
+    marker.setMap(map); 
+    
+    }   
+    });   
+     
+      $('#airport_count').text(airports.length);  
+     
+     
+  });
+    
+    var marker_check;
+
+function placeMarker(location) {
+  if ( marker_check ) {
+    marker_check.setPosition(location);
+  } else {
+    marker_check = new google.maps.Marker({
+      position: location,
+      map: map
+    });
+    var circle = new google.maps.Circle({
+      map: map,
+      radius: 160930,    // 100 miles in metres
+      fillColor: '#AA0000'
+     });
+     circle.bindTo('center', marker_check, 'position');     
+      
+  }
+    
+ $('#selected_coordinate').show();
+    
+}
+
+    // when the user clicks on the map, we put a point down 
+google.maps.event.addListener(map, 'click', function(event) {
+  placeMarker(event.latLng);
+  
+  var myLatLng = event.latLng;
+  var lat = myLatLng.lat();
+  var lng = myLatLng.lng();
+  
+    // if the map is already zoomed in, do nothing. Else zoom into a reasonable level. 
+  if (map.getZoom() < 5 ) {
+     map.setZoom(5);
+  }
+
+  // recenter the map     
+  map.setCenter(event.latLng);
+    
+    
+$('#marker_lat').text(parseFloat(lat).toFixed(4));    
+$('#marker_lng').text(parseFloat(lng).toFixed(4));
+    
+var $box_parameters = latlong_distance(10, parseFloat(lat), parseFloat(lng));
+//console.log($box_parameters);
+    var min_lat = lat - $box_parameters.latitude;
+    var max_lat = lat + $box_parameters.latitude;
+    var min_long = lng + $box_parameters.latitude;
+    var max_long = lng - $box_parameters.latitude;
+    
+var found_names = $.grep(airports , function(v) {
+    return v[1] >  &&  && &&;
+});
+    
+    
+    
+});    
+   
+    
+  
+  //end of initialize   
+}
+
+google.maps.event.addDomListener(window, 'load', initialize);
+//console.log("a");    
+
+
+    
+
+    
+    
+</script>    
+    
+    
+</head>
+<body>
+<div id=></div>
+<div id="main">   
+<div id="googleMap"></div>   
+<div id="sidebar">
+    <div id="intro_text">
+     There are <span id="airport_count"></span> airports in the United States. 
+    </div>
+    <div id="zip">
+        
+        Look up your location: 
+       <input type="text" size="25" id="data_entry" class="text_default" value="Enter your Zip Code">
+        <button id="button">Go</button>
+        
+    </div>
+    <div id="legend" >
+    <ul class="no_display">    
+    
+    <li><img src="BlueDot.png"> - Airport
+    </ul>    
+    </div>
+                
+        <!--  end sidebar --->
+ </div>
+<!--    end main box --->
+    </div>
+    
+<div id="selected_coordinate">    
+Latitude/Longitude: <span id="marker_lat" >unknown</span>, <span id="marker_lng">unknown</span>    
+    
+</div>    
+<script>
+    
+   $("#data_entry").on('focus',function() {
+
+       this.value="";
+});    
+    
+    $("#button").click(function() {
+  console.log("workd");
+});
+    
+  
+
+      
+    </script>    
+
+    
+</body>
+</html>
